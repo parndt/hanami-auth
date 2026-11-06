@@ -17,7 +17,7 @@ module <%= namespace %>
     def self.included(action_class)
       super
 
-      action_class.include Deps[auth_session_repo: "repos.<%= session_repo %>"]
+      action_class.include Deps[auth_session_repo: "repos.<%= session_repo %>", rate_limit_repo: "repos.rate_limit_repo"]
       action_class.extend ClassMethods
       action_class.before :resume_session
       action_class.before :require_authentication
@@ -33,6 +33,19 @@ module <%= namespace %>
         return @allow_unauthenticated_access if instance_variable_defined?(:@allow_unauthenticated_access)
 
         superclass.respond_to?(:allow_unauthenticated_access?) && superclass.allow_unauthenticated_access?
+      end
+
+      # Turns away an IP address's requests to this action once it has made `to` of them within
+      # `within` seconds, redirecting to the `redirect` route instead.
+      #
+      #   rate_limit to: 10, within: 3 * 60, redirect: :new_session
+      def rate_limit(to:, within:, redirect:)
+        before do |request, response|
+          next if rate_limit_repo.hit("#{self.class.name}:#{request.ip}", within:) <= to
+
+          response.flash[:alert] = "Try again later."
+          response.redirect_to routes.path(redirect), status: 303
+        end
       end
     end
 

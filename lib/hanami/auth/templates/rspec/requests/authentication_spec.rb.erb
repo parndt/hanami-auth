@@ -31,6 +31,17 @@ RSpec.describe "Authentication", :db, :mailers, type: :request do
     expect(signed_in?).to be false
   end
 
+  it "turns away sign ins after too many attempts" do
+    10.times { sign_in_as(<%= model %>, password: "wrong password"<%= sign_in_args %>) }
+    expect(last_response.status).to eq 422
+
+    sign_in_as(<%= model %>, password:<%= sign_in_args %>)
+
+    expect(last_response.status).to eq 303
+    expect(last_response.location).to eq "<%= sign_in_path %>"
+    expect(signed_in?).to be false
+  end
+
   it "requires a signed-in <%= model %> for protected actions" do
     delete "<%= session_path %>"
 

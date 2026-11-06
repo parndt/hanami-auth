@@ -160,7 +160,11 @@ module Hanami
         dir = migrations_dir
         timestamp = Time.now # local time, as `hanami generate migration` uses
 
-        {"create_models" => "create_#{models}", "create_sessions" => "create_#{sessions_table}"}
+        {
+          "create_models" => "create_#{models}",
+          "create_sessions" => "create_#{sessions_table}",
+          "create_rate_limits" => "create_rate_limits"
+        }
           .each_with_index do |(template, name), index|
             existing = Dir.glob(File.join(dir, "*_#{name}.rb")).first
             if existing && !force?

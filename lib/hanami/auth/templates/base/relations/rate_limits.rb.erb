@@ -1,0 +1,9 @@
+# frozen_string_literal: true
+
+module <%= namespace %>
+  module Relations
+    class RateLimits < <%= namespace %>::DB::Relation
+      schema :rate_limits, infer: true
+    end
+  end
+end

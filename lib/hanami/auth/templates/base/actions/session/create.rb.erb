@@ -5,6 +5,7 @@ module <%= namespace %>
     module Session
       class Create < <%= namespace %>::Action
         allow_unauthenticated_access
+        rate_limit to: 10, within: 3 * 60, redirect: :<%= route(:new_session) %>
 
         include Deps["operations.sign_in", view: "views.session.new"]
 
