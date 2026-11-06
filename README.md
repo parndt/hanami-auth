@@ -41,7 +41,8 @@ app["repos.user_repo"].create(email_address: "you@example.com", password: "a lon
 
 - **Sign in and sign out**, at `/session/new` and `DELETE /session`. Sessions live in a `sessions`
   table, so you can list and revoke them. The cookie holds a random token, and the table stores only
-  its SHA-256 digest.
+  its SHA-256 digest. Sessions expire after 30 days. Each sign in deletes expired sessions, or you
+  can run `repos.session_repo`'s `delete_expired` on a schedule.
 - **Password reset** at `/passwords/new`. A mailer sends a signed link that expires after 15 minutes
   and works once, because changing the password invalidates it. A reset also signs that user out
   everywhere. In development, the link is logged too.
