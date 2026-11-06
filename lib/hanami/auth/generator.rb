@@ -1,10 +1,23 @@
 # frozen_string_literal: true
 
 require "erb"
+require "hanami/cli"
 require "securerandom"
 
 module Hanami
   module Auth
+    # Raised when an app or slice already has authentication for a different model.
+    #
+    # @api private
+    class ExistingAuthenticationError < Hanami::CLI::Error
+      def initialize(location:, existing:, model:)
+        super(<<~TEXT.chomp)
+          #{location} already has authentication for #{existing}, and it can only have one model's.
+          Generate #{model} authentication into a slice instead: hanami generate auth #{model} --slice=NAME
+        TEXT
+      end
+    end
+
     # Writes the authentication code into an app or slice.
     #
     # Files under `templates/base/` are written relative to the app's `app/` dir or the slice's root;
@@ -49,6 +62,8 @@ module Hanami
       end
 
       def call
+        check_existing_authentication
+
         generate_files
         generate_migrations
         generate_tests if test_framework
@@ -97,7 +112,8 @@ module Hanami
       attr_reader :test_framework
 
       # Model naming. The default "user" model keeps plain names (`users`, `sessions`); any other
-      # model prefixes its sessions table (`admins`, `admin_sessions`), so it can sit alongside users.
+      # model prefixes its sessions table (`admins`, `admin_sessions`), so a slice's model can share a
+      # database with the app's.
       attr_reader :model
       def models = inflector.pluralize(model)
       def model_class = inflector.camelize(model)
@@ -149,6 +165,20 @@ module Hanami
 
       # The app's own files (settings, app config) always live at the root.
       def app_file(*path) = fs.join(*path)
+
+      # An app or slice has one Authentication module, and one set of session and password actions and
+      # routes, so a second model there would get its tables and repos but nothing that uses them.
+      # Running again for the same model is fine.
+      def check_existing_authentication
+        path = fs.join(base_path, "authentication.rb")
+        return if !fs.exist?(path) || fs.exist?(fs.join(base_path, "repos", "#{model}_repo.rb"))
+
+        raise ExistingAuthenticationError.new(
+          location: slice? ? "The #{slice} slice" : "app/",
+          existing: fs.read(path)[/def current_(?!session\b)(\w+)\(request\)/, 1] || "another model",
+          model:
+        )
+      end
 
       def generate_files
         each_template("base") do |relative_path, source|
