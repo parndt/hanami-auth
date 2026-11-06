@@ -114,6 +114,25 @@ RSpec.describe Hanami::Auth::Generator do
     expect(read("app/action.rb").scan("include Authentication").size).to eq 1
   end
 
+  it "adds the view context methods after any the context already has" do
+    File.write("app/views/context.rb", read("app/views/context.rb").sub(/^ *# Define.*\n/, <<~RUBY.gsub(/^/, "      ")))
+      def page_title
+        "Bookshelf"
+      end
+    RUBY
+
+    generate
+
+    expect(read("app/views/context.rb")).to include <<~RUBY.gsub(/^(?=.)/, "      ")
+      def page_title
+        "Bookshelf"
+      end
+
+      # The signed-in user, as resolved by Bookshelf::Authentication for this request.
+      def current_user
+    RUBY
+  end
+
   it "leaves existing session config alone, with a notice" do
     File.write("config/app.rb", read("config/app.rb").sub("class App < Hanami::App\n", "\\0    config.actions.sessions = :cookie, {secret: \"x\"}\n"))
 

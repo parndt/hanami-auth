@@ -11,6 +11,7 @@ gem "hanami-utils", github: "hanami/hanami-utils", branch: "main"
 gem "hanami-router", github: "hanami/hanami-router", branch: "main"
 gem "dry-cli", github: "dry-rb/dry-cli", branch: "main"
 gem "dry-system", github: "dry-rb/dry-system", branch: "main"
+gem "dry-files", github: "dry-rb/dry-files", branch: "class-bottom-closing-end"
 
 gem "rake", ">= 12.3.3"
 
