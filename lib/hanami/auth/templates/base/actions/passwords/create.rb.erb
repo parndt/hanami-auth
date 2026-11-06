@@ -6,14 +6,34 @@ module <%= namespace %>
       class Create < <%= namespace %>::Action
         allow_unauthenticated_access
 
-        include Deps["operations.request_password_reset"]
+        include Deps["operations.request_password_reset", "logger"]
 
         def handle(request, response)
-          request_password_reset.call(email_address: request.params[:email_address].to_s)
+          email_address = request.params[:email_address].to_s
+
+          # Only a known address sends email, which takes time. Doing it after the response is sent
+          # keeps the response time the same either way.
+          after_response(request) { request_password_reset.call(email_address:) }
 
           # The same response either way, so this form can't be used to discover accounts.
           response.flash[:notice] = "Password reset instructions sent (if an account with that email address exists)."
           response.redirect_to routes.path(:<%= route(:new_session) %>), status: 303
+        end
+
+        private
+
+        # Runs the block once the response is sent, on servers that support Rack's
+        # `rack.response_finished` (such as Puma and Falcon), or straight away on others.
+        def after_response(request, &block)
+          callbacks = request.env["rack.response_finished"]
+          return block.call unless callbacks
+
+          callbacks << lambda do |*|
+            block.call
+          rescue => error
+            # The server would swallow this, so log it where a failed delivery will be seen.
+            logger.error(error)
+          end
         end
       end
     end

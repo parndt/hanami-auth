@@ -66,6 +66,17 @@ RSpec.describe "Authentication", :db, :mailers, type: :request do
     expect(last_response.status).to eq 302
   end
 
+  it "sends the reset email after the response, where the server supports it" do
+    response_finished = []
+    post "<%= passwords_path %>", {email_address: "someone@example.com"}, "rack.response_finished" => response_finished
+
+    expect(last_response.status).to eq 303
+    expect(deliveries).to be_empty
+
+    response_finished.each { _1.call(last_request.env, 303, {}, nil) }
+    expect(deliveries.size).to eq 1
+  end
+
   it "doesn't send email for unknown addresses" do
     post "<%= passwords_path %>", email_address: "nobody@example.com"
 
