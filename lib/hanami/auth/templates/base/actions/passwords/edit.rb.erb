@@ -20,7 +20,7 @@ module <%= namespace %>
             return
           end
 
-          response.flash[:alert] = "That password reset link is invalid or has expired."
+          response.flash[:alert] = t(".invalid_token")
           response.redirect_to routes.path(:<%= route(:new_password) %>)
         end
       end

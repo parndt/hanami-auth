@@ -51,7 +51,7 @@ module <%= namespace %>
         before do |request, response|
           next if rate_limit_repo.hit("#{self.class.name}:#{request.ip}", within:) <= to
 
-          response.flash[:alert] = "Try again later."
+          response.flash[:alert] = t("authentication.rate_limited")
           response.redirect_to routes.path(redirect), status: 303
         end
       end
@@ -82,7 +82,7 @@ module <%= namespace %>
       return if self.class.allow_unauthenticated_access? || authenticated?(request)
 
       request.session[RETURN_TO_KEY] = request.fullpath if request.get?
-      response.flash[:alert] = "Sign in to continue."
+      response.flash[:alert] = t("authentication.sign_in_required")
       # 303 after a non-GET request, so the browser (and Turbo) follows up with a GET.
       response.redirect_to routes.path(:<%= route(:new_session) %>), status: request.get? ? 302 : 303
     end
