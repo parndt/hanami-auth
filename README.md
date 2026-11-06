@@ -102,6 +102,12 @@ Re-running is safe: existing files are skipped, and each change to an existing f
 [hanami-auth-example](https://github.com/afomera/hanami-auth-example) is a small notes app on Hanami
 main that runs this generator. Its git history shows exactly what the generator wrote.
 
+## Development
+
+`bundle exec rspec` checks the generator's output. `script/e2e` goes further: it creates real Hanami
+apps with `hanami new`, runs `hanami generate auth` in them, and runs the tests that generates. It
+needs network access for `bundle install`.
+
 ## License
 
 MIT
