@@ -21,7 +21,8 @@ module Hanami
       GEMS = {
         "argon2" => %(gem "argon2", "~> 2.3"),
         "dry-operation" => %(gem "dry-operation", ">= 1.0.1"),
-        "dry-validation" => %(gem "dry-validation", "~> 1.11")
+        "dry-validation" => %(gem "dry-validation", "~> 1.11"),
+        "i18n" => %(gem "i18n", "~> 1.14")
       }.freeze
 
       TEST_FRAMEWORKS = {"rspec" => "spec", "minitest" => "test"}.freeze
@@ -51,6 +52,7 @@ module Hanami
 
       def call
         generate_files
+        generate_translations
         generate_migrations
         generate_tests if test_framework
 
@@ -155,6 +157,12 @@ module Hanami
         each_template("base") do |relative_path, source|
           create(fs.join(base_path, expand_path(relative_path)), render(source))
         end
+      end
+
+      # The app's translations live in its root config/i18n, and a slice's in its own.
+      def generate_translations
+        dir = slice? ? fs.join(base_path, "config", "i18n") : fs.join("config", "i18n")
+        create(fs.join(dir, "authentication.en.yml"), render(read_template("i18n/authentication.en.yml.erb")))
       end
 
       def generate_migrations

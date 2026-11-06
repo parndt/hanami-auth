@@ -26,6 +26,7 @@ RSpec.describe Hanami::Auth::Generator do
     )
     expect(Dir.glob("config/db/migrate/*.rb").map { File.basename(_1).sub(/\A\d+_/, "") })
       .to eq %w[create_users.rb create_sessions.rb]
+    expect(File).to exist("config/i18n/authentication.en.yml")
     expect(File).to exist("spec/requests/authentication_spec.rb")
     expect(File).to exist("spec/support/authentication.rb")
     expect(Dir.glob("spec/operations/*.rb").sort)
@@ -43,7 +44,7 @@ RSpec.describe Hanami::Auth::Generator do
   it "wires the app up" do
     generate
 
-    expect(read("Gemfile")).to include %(gem "argon2", "~> 2.3"\ngem "dry-operation", ">= 1.0.1"\ngem "dry-validation", "~> 1.11"\n\ngroup :development)
+    expect(read("Gemfile")).to include %(gem "argon2", "~> 2.3"\ngem "dry-operation", ">= 1.0.1"\ngem "dry-validation", "~> 1.11"\ngem "i18n", "~> 1.14"\n\ngroup :development)
     expect(read("config/settings.rb")).to include "setting :session_secret"
     expect(read("config/app.rb")).to include "config.actions.sessions = :cookie", "secret: settings.session_secret"
     expect(read("app/action.rb")).to include "include Dry::Monads[:result]\n    include Authentication\n"
@@ -145,6 +146,7 @@ RSpec.describe Hanami::Auth::Generator do
     expect(read("slices/admin/authentication.rb")).to include "module Admin", "routes.path(:new_admin_session)"
     expect(read("slices/admin/operations/request_password_reset.rb")).to include "routes.url(:edit_admin_password"
     expect(read("slices/admin/action.rb")).to include "include Authentication"
+    expect(File).to exist("slices/admin/config/i18n/authentication.en.yml")
     expect(read("slices/admin/operation.rb")).to include "module Admin", "class Operation < Dry::Operation"
     expect(read("slices/admin/operations/reset_password.rb")).to include "class ResetPassword < Admin::Operation", "admin_session_repo.delete_all_for_admin"
     expect(read("test/slices/admin/operations/sign_in_test.rb")).to include "class AdminSignInTest", %(Admin::Slice["operations.sign_in"])

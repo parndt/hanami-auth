@@ -6,7 +6,7 @@ module <%= namespace %>
       class Destroy < <%= namespace %>::Action
         def handle(request, response)
           terminate_session(request)
-          response.flash[:notice] = "Signed out."
+          response.flash[:notice] = t(".signed_out")
           response.redirect_to routes.path(:<%= route(:new_session) %>), status: 303
         end
       end

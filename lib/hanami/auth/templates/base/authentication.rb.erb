@@ -61,7 +61,7 @@ module <%= namespace %>
       return if self.class.allow_unauthenticated_access? || authenticated?(request)
 
       request.session[:return_to] = request.fullpath if request.get?
-      response.flash[:alert] = "Sign in to continue."
+      response.flash[:alert] = t("authentication.sign_in_required")
       # 303 after a non-GET request, so the browser (and Turbo) follows up with a GET.
       response.redirect_to routes.path(:<%= route(:new_session) %>), status: request.get? ? 302 : 303
     end

@@ -14,7 +14,7 @@ module <%= namespace %>
 
         def handle(request, response)
           unless request.params.valid?
-            response.flash.now[:alert] = "Enter your email address."
+            response.flash.now[:alert] = t(".email_address_missing")
             response.status = 422
             return response.render(view)
           end
@@ -22,7 +22,7 @@ module <%= namespace %>
           request_password_reset.call(email_address: request.params[:email_address])
 
           # The same response either way, so this form can't be used to discover accounts.
-          response.flash[:notice] = "Password reset instructions sent (if an account with that email address exists)."
+          response.flash[:notice] = t(".sent")
           response.redirect_to routes.path(:<%= route(:new_session) %>), status: 303
         end
       end

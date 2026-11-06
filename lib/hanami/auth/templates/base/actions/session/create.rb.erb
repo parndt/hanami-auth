@@ -19,7 +19,7 @@ module <%= namespace %>
           case sign_in.call(**request.params.to_h)
           in Success(<%= model %>)
             start_new_session_for(request, <%= model %>)
-            response.flash[:notice] = "Signed in."
+            response.flash[:notice] = t(".signed_in")
             response.redirect_to after_authentication_url(request), status: 303
           in Failure(:invalid_credentials)
             reject(response)
@@ -29,7 +29,7 @@ module <%= namespace %>
         private
 
         def reject(response)
-          response.flash.now[:alert] = "Try another email address or password."
+          response.flash.now[:alert] = t(".invalid_credentials")
           response.status = 422
           response.render(view)
         end

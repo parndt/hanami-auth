@@ -1,0 +1,43 @@
+en:
+  authentication:
+    sign_in_required: "Sign in to continue."
+  session:
+    new:
+      heading: "Sign in"
+      email_address: "Email address"
+      password: "Password"
+      submit: "Sign in"
+      forgot_password: "Forgot your password?"
+    create:
+      signed_in: "Signed in."
+      invalid_credentials: "Try another email address or password."
+    destroy:
+      signed_out: "Signed out."
+  passwords:
+    new:
+      heading: "Forgot your password?"
+      email_address: "Email address"
+      submit: "Email reset instructions"
+      back_to_sign_in: "Back to sign in"
+    create:
+      email_address_missing: "Enter your email address."
+      sent: "Password reset instructions sent (if an account with that email address exists)."
+    edit:
+      heading: "Choose a new password"
+      password: "New password"
+      password_confirmation: "Confirm new password"
+      submit: "Save"
+      invalid_token: "That password reset link is invalid or has expired."
+    update:
+      reset: "Your password has been reset. Sign in with your new password."
+      invalid_token: "That password reset link is invalid or has expired."
+      passwords_missing: "Enter and confirm your new password."
+      password_too_short: "Password must be at least %{count} characters."
+      password_mismatch: "Passwords don't match."
+  mailers:
+    password_reset:
+      subject: "Reset your password"
+      requested: "Someone asked to reset the password for %{email_address}."
+      choose_html: '<a href="%{url}">Choose a new password</a>. This link expires in 15 minutes.'
+      choose: "Choose a new password (this link expires in 15 minutes):"
+      ignore: "If you didn't ask for this, you can ignore this email. Your password won't change."

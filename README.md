@@ -65,6 +65,8 @@ app["repos.user_repo"].create(email_address: "you@example.com", password: "a lon
 - **Cookie sessions**, configured in `config/app.rb` with a `session_secret` setting.
   `.env.development` and `.env.test` get generated secrets; set `SESSION_SECRET` (64+ characters)
   in production.
+- **Translations.** Every message, label, and email line comes from `config/i18n/authentication.en.yml`
+  (or the slice's `config/i18n`), so you can reword them or add locales there.
 - **Request and operation tests** for rspec or minitest, whichever your app bundles, plus a
   `sign_in_as(user, password:)` helper.
 - **Turbo-friendly** responses: 303 redirects and 422 re-renders. With

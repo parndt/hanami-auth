@@ -16,7 +16,7 @@ module <%= namespace %>
 
         def handle(request, response)
           token = request.params[:id]
-          return reject(request, response, "Enter and confirm your new password.") unless request.params.valid?
+          return reject(request, response, t(".passwords_missing")) unless request.params.valid?
 
           result = reset_password.call(
             token:,
@@ -26,13 +26,15 @@ module <%= namespace %>
 
           case result
           in Success(_)
-            response.flash[:notice] = "Your password has been reset. Sign in with your new password."
+            response.flash[:notice] = t(".reset")
             response.redirect_to routes.path(:<%= route(:new_session) %>), status: 303
           in Failure(:invalid_token)
-            response.flash[:alert] = "That password reset link is invalid or has expired."
+            response.flash[:alert] = t(".invalid_token")
             response.redirect_to routes.path(:<%= route(:new_password) %>), status: 303
-          in Failure[:invalid_password, message]
-            reject(request, response, message)
+          in Failure(:password_too_short)
+            reject(request, response, t(".password_too_short", count: Operations::ResetPassword::MINIMUM_LENGTH))
+          in Failure(:password_mismatch)
+            reject(request, response, t(".password_mismatch"))
           end
         end
 
