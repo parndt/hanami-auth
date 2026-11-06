@@ -22,10 +22,11 @@ RSpec.describe Hanami::Auth::Generator do
       "app/relations/sessions.rb",
       "app/repos/user_repo.rb",
       "app/repos/session_repo.rb",
+      "app/repos/rate_limit_repo.rb",
       "app/structs/user.rb"
     )
     expect(Dir.glob("config/db/migrate/*.rb").map { File.basename(_1).sub(/\A\d+_/, "") })
-      .to eq %w[create_users.rb create_sessions.rb]
+      .to eq %w[create_users.rb create_sessions.rb create_rate_limits.rb]
     expect(File).to exist("spec/requests/authentication_spec.rb")
     expect(File).to exist("spec/support/authentication.rb")
     expect(Dir.glob("spec/operations/*.rb").sort)
@@ -110,7 +111,7 @@ RSpec.describe Hanami::Auth::Generator do
     generate(force: true)
 
     expect(read("app/authentication.rb")).to include "module Authentication"
-    expect(Dir.glob("config/db/migrate/*.rb").size).to eq 2
+    expect(Dir.glob("config/db/migrate/*.rb").size).to eq 3
     expect(read("app/action.rb").scan("include Authentication").size).to eq 1
   end
 
@@ -152,7 +153,7 @@ RSpec.describe Hanami::Auth::Generator do
     expect(read("app/authentication.rb")).to include "def current_admin(request)", %("repos.admin_session_repo")
     expect(read("app/views/context.rb")).to include "def current_admin"
     expect(Dir.glob("config/db/migrate/*.rb").map { File.basename(_1).sub(/\A\d+_/, "") })
-      .to eq %w[create_admins.rb create_admin_sessions.rb]
+      .to eq %w[create_admins.rb create_admin_sessions.rb create_rate_limits.rb]
     expect(File).to exist("spec/requests/admin_authentication_spec.rb")
   end
 

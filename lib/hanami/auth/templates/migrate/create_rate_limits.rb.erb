@@ -1,0 +1,14 @@
+# frozen_string_literal: true
+
+ROM::SQL.migration do
+  change do
+    create_table :rate_limits do
+      primary_key :id
+      column :key, String, null: false
+      column :expires_at, DateTime, null: false
+
+      index %i[key expires_at]
+      index :expires_at
+    end
+  end
+end

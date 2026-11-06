@@ -1,0 +1,17 @@
+# frozen_string_literal: true
+
+module <%= namespace %>
+  module Repos
+    class RateLimitRepo < <%= namespace %>::DB::Repo
+      # Records a hit for the key, lasting `within` seconds, and returns how many of its hits haven't
+      # expired, this one included. Expired hits for every key are deleted along the way.
+      def hit(key, within:, now: Time.now)
+        transaction do
+          rate_limits.where { expires_at <= now }.delete
+          rate_limits.changeset(:create, key:, expires_at: now + within).commit
+          rate_limits.where(key:).where { expires_at > now }.count
+        end
+      end
+    end
+  end
+end

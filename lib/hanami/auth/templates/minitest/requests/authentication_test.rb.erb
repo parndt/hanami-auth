@@ -33,6 +33,17 @@ class <%= test_class_prefix %>AuthenticationTest < RequestTest
     refute signed_in?
   end
 
+  test "turns away sign ins after too many attempts" do
+    10.times { sign_in_as(@<%= model %>, password: "wrong password"<%= sign_in_args %>) }
+    assert_equal 422, last_response.status
+
+    sign_in_as(@<%= model %>, password: PASSWORD<%= sign_in_args %>)
+
+    assert_equal 303, last_response.status
+    assert_equal "<%= sign_in_path %>", last_response.location
+    refute signed_in?
+  end
+
   test "requires a signed-in <%= model %> for protected actions" do
     delete "<%= session_path %>"
 
