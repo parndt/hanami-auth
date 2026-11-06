@@ -170,7 +170,7 @@ module Hanami
 
             version = (timestamp + index).strftime("%Y%m%d%H%M%S")
             path = existing || fs.join(dir, "#{version}_#{name}.rb")
-            write(path, render(read_template("migrate/#{template}.rb.erb")))
+            fs.write(path, render(read_template("migrate/#{template}.rb.erb")))
           end
       end
 
@@ -193,13 +193,16 @@ module Hanami
       end
 
       def inject_gems
-        update("Gemfile") do |content|
+        inject("Gemfile") do |content|
           missing = GEMS.reject { |name, _| content.match?(/^\s*gem ["']#{name}["']/) }.values
           next if missing.empty?
 
           @gemfile_changed = true
-          lines = missing.join("\n")
-          insert_before_first(content, /^group /, "#{lines}\n\n") || "#{content.chomp}\n\n#{lines}\n"
+          if content.match?(/^group /)
+            fs.inject_line_before("Gemfile", /^group /, "#{missing.join("\n")}\n\n")
+          else
+            fs.append("Gemfile", "\n#{missing.join("\n")}")
+          end
         end
       end
 
@@ -210,7 +213,7 @@ module Hanami
         return if fs.exist?(path)
 
         parent = slice? && fs.exist?(app_file("app", "operation.rb")) ? "#{app_namespace}::Operation" : "Dry::Operation"
-        write(path, render(read_template("operation.rb.erb")).sub("PARENT", parent))
+        fs.write(path, render(read_template("operation.rb.erb")).sub("PARENT", parent))
       end
 
       # Actions pattern match on operation results with `Success` and `Failure`. `hanami new` includes
@@ -218,43 +221,50 @@ module Hanami
       def ensure_result_monads
         path = app_file("app", "action.rb")
 
-        update(path) do |content|
+        inject(path, "#{app_namespace}::Action class") do |content|
           next if content.include?("Dry::Monads[:result]")
 
-          class_line = content.match(/^(\s*)class Action < Hanami::Action.*$/) or next missing("#{app_namespace}::Action class")
-          indent = "#{class_line[1]}  "
-          content = content.dup.insert(class_line.end(0), "\n#{indent}# Provide `Success` and `Failure` for pattern matching on operation results\n#{indent}include Dry::Monads[:result]\n")
-          content.sub(/^require "hanami\/action"\n/) { "#{_1}require \"dry/monads\"\n" }
+          fs.inject_line_at_block_top(
+            path, /class Action < Hanami::Action/,
+            "# Provide `Success` and `Failure` for pattern matching on operation results",
+            "include Dry::Monads[:result]"
+          )
+          fs.inject_line_after(path, %(require "hanami/action"), %(require "dry/monads")) if content.include?(%(require "hanami/action"))
         end
       end
 
       def inject_settings
-        update(app_file("config", "settings.rb")) do |content|
+        path = app_file("config", "settings.rb")
+
+        inject(path, "Settings class") do |content|
           next if content.include?("setting :session_secret")
 
-          setting = <<~RUBY.gsub(/^/, "    ")
-            # Signs and encrypts the session cookie, and signs password reset tokens.
-            setting :session_secret, constructor: Types::String.constrained(min_size: 64)
-          RUBY
-
-          insert_into_class(content, /class Settings < Hanami::Settings/, setting)
+          fs.inject_line_at_block_top(
+            path, /class Settings < Hanami::Settings/,
+            "# Signs and encrypts the session cookie, and signs password reset tokens.",
+            "setting :session_secret, constructor: Types::String.constrained(min_size: 64)",
+            ""
+          )
         end
       end
 
       def inject_session_secrets
         %w[development test].each do |env|
           path = app_file(".env.#{env}")
-          content = fs.exist?(path) ? fs.read(path) : ""
-          next if content.match?(/^SESSION_SECRET=/)
+          line = "SESSION_SECRET=#{SecureRandom.hex(64)}"
 
-          line = "SESSION_SECRET=#{SecureRandom.hex(64)}\n"
-          header = content.empty? ? "# Local #{env} secret only. Set your own SESSION_SECRET in production.\n" : ""
-          fs.write(path, "#{content}#{"\n" unless content.empty? || content.end_with?("\n")}#{header}#{line}")
+          if !fs.exist?(path)
+            fs.write(path, "# Local #{env} secret only. Set your own SESSION_SECRET in production.\n#{line}\n")
+          elsif !fs.read(path).match?(/^SESSION_SECRET=/)
+            fs.append(path, line)
+          end
         end
       end
 
       def inject_sessions_config
-        update(app_file("config", "app.rb")) do |content|
+        path = app_file("config", "app.rb")
+
+        inject(path, "App class") do |content|
           if content.match?(/config\.actions\.sessions\s*=/)
             next if content.include?("settings.session_secret")
 
@@ -262,7 +272,7 @@ module Hanami
             next
           end
 
-          sessions = <<~RUBY.gsub(/^/, "    ")
+          fs.inject_line_at_block_top(path, /class App < Hanami::App/, <<~RUBY)
             config.actions.sessions = :cookie, {
               key: "#{cookie_key}",
               secret: settings.session_secret,
@@ -272,33 +282,37 @@ module Hanami
               secure: Hanami.env?(:production)
             }
           RUBY
-
-          insert_into_class(content, /class App < Hanami::App/, sessions)
         end
       end
 
       def inject_action_include
-        update(fs.join(base_path, "action.rb")) do |content|
+        path = fs.join(base_path, "action.rb")
+
+        inject(path, "#{namespace}::Action class") do |content|
           next if content.match?(/^\s*include Authentication\b/)
 
-          class_line = content.match(/^(\s*)class Action < .*$/) or next missing("#{namespace}::Action class")
-          indent = "#{class_line[1]}  "
-
           # Place it after the class's existing includes, if it has any.
-          rest = content[class_line.end(0)..]
-          last_include = rest.to_enum(:scan, /^#{indent}include .*$/).map { Regexp.last_match }.last
-          offset = class_line.end(0) + (last_include ? last_include.end(0) : 0)
+          indent = content[/^(\s*)class Action < /, 1] or next missing("#{namespace}::Action class")
+          include_line = /^#{indent}  include /
 
-          content.dup.insert(offset, "\n#{indent}include Authentication")
+          if content.match?(include_line)
+            fs.inject_line_after_last(path, include_line, "#{indent}  include Authentication")
+          else
+            fs.inject_line_at_block_top(path, /class Action < /, "include Authentication")
+          end
         end
       end
 
       def inject_view_context
-        update(fs.join(base_path, "views", "context.rb")) do |content|
-          next if content.include?("def current_user")
+        path = fs.join(base_path, "views", "context.rb")
 
-          methods = render(read_template("context_methods.rb.erb")).gsub(/^(?=.)/, "      ")
-          insert_into_class(content, /class Context < /, methods, at: :bottom)
+        inject(path, "Views::Context class") do |content|
+          next if content.include?("def current_#{model}")
+
+          fs.inject_line_at_class_bottom(
+            path, /class Context < /,
+            after_body(content, /class Context < /, render(read_template("context_methods.rb.erb")))
+          )
         end
       end
 
@@ -309,29 +323,31 @@ module Hanami
           inject_slice_routes_block
         else
           path = slice? ? slice_routes : app_file("config", "routes.rb")
-          update(path) do |content|
+
+          inject(path, "Routes class") do |content|
             next if content.match?(/resource :session\b/)
 
-            insert_into_class(content, /class Routes < Hanami::Routes/, ROUTES.gsub(/^/, "    "), at: :bottom)
+            fs.inject_line_at_class_bottom(path, /class Routes < Hanami::Routes/, after_body(content, /class Routes < /, ROUTES))
           end
         end
       end
 
       def inject_slice_routes_block
-        update(app_file("config", "routes.rb")) do |content|
-          block = content.match(/^(\s*)slice :#{slice}\b.*do\s*$/)
+        path = app_file("config", "routes.rb")
+        slice_block = /^\s*slice :#{slice}\b.*do\s*$/
 
-          if block
-            body = content[block.end(0)..]
-            next if body[/\A.*?^#{block[1]}end\b/m].to_s.match?(/resource :session\b/)
+        inject(path, "Routes class") do |content|
+          if content.match?(slice_block)
+            next if fs.block_contains?(path, slice_block, "resource :session")
 
-            close = body.index(/^#{block[1]}end\b/)
-            content.dup.insert(block.end(0) + close, ROUTES.gsub(/^/, "#{block[1]}  "))
+            fs.inject_line_at_block_bottom(path, slice_block, after_body(content, slice_block, ROUTES))
           else
             next if content.match?(/slice :#{slice}\b/)
 
-            routes = "slice :#{slice}, at: \"/#{slice}\" do\n#{ROUTES.gsub(/^/, "  ")}end\n"
-            insert_into_class(content, /class Routes < Hanami::Routes/, routes.gsub(/^(?=.)/, "    "), at: :bottom)
+            fs.inject_line_at_class_bottom(
+              path, /class Routes < Hanami::Routes/,
+              after_body(content, /class Routes < /, "slice :#{slice}, at: \"/#{slice}\" do\n#{ROUTES.gsub(/^/, "  ")}end")
+            )
           end
         end
       end
@@ -340,11 +356,11 @@ module Hanami
         layout = fs.join(base_path, "templates", "layouts", "app.html.erb")
         layout = app_file("app", "templates", "layouts", "app.html.erb") unless fs.exist?(layout)
 
-        update(layout) do |content|
+        inject(layout, "</head> in #{layout}") do |content|
           next if content.include?("content_for :head") || content.include?("content_for(:head)")
 
-          insert_before_first(content, %r{^(\s*)</head>}) { |m| "#{m[1]}  <%= content_for :head %>\n" } ||
-            missing("</head> in #{layout}")
+          indent = content[%r{^(\s*)</head>}, 1] or next missing("</head> in #{layout}")
+          fs.inject_line_before(layout, "</head>", "#{indent}  <%= content_for :head %>")
         end
       end
 
@@ -367,49 +383,25 @@ module Hanami
       end
 
       def create(path, content)
-        if fs.exist?(path) && !force?
-          skipped(path)
-        else
-          write(path, content)
-        end
+        return skipped(path) if fs.exist?(path) && !force?
+
+        fs.create(path, content, force: force?)
       end
 
-      def write(path, content) = fs.write(path, content)
+      # Yields a file's content, to make changes to it through `fs`. Reports, rather than raises, a
+      # file or target that isn't there, since the app may have been changed from how `hanami new`
+      # left it.
+      def inject(path, target = path)
+        return missing(path) unless fs.exist?(path)
 
-      # Yields a file's content; writes the returned string, if any.
-      def update(path)
-        unless fs.exist?(path)
-          missing(path)
-          return
-        end
-
-        original = fs.read(path)
-        updated = yield(original)
-        fs.write(path, updated) if updated.is_a?(String) && updated != original
+        yield fs.read(path)
+      rescue Dry::Files::MissingTargetError
+        missing(target)
       end
 
-      # Inserts lines just inside a class body: at the top (after the class line) or bottom (before
-      # its matching `end`).
-      def insert_into_class(content, class_pattern, lines, at: :top)
-        match = content.match(/^(\s*)#{class_pattern}.*$/) or return missing(class_pattern.source)
-        indent = match[1]
-
-        if at == :top
-          # Keep a blank line before any existing body, but none before the class's closing `end`.
-          empty_class = content[match.end(0)..].match?(/\A\n#{indent}end\b/)
-          content.dup.insert(match.end(0), "\n#{lines.chomp}#{"\n" unless empty_class}")
-        else
-          close = content.index(/^#{indent}end\b/, match.end(0)) or return missing("end of #{class_pattern.source}")
-          before = content[0...close]
-          separator = before.end_with?("\n\n") || before.match?(/^\s*#{class_pattern}.*\n\z/) ? "" : "\n"
-          content.dup.insert(close, "#{separator}#{lines.chomp}\n")
-        end
-      end
-
-      def insert_before_first(content, pattern, text = nil)
-        match = content.match(pattern) or return
-        text = yield(match) if block_given?
-        content.dup.insert(match.begin(0), text)
+      # Separates lines added to the bottom of a class or block from the body already there.
+      def after_body(content, opening, lines)
+        content.match?(/#{opening}.*\n\s*end\b/) ? lines : "\n#{lines}"
       end
 
       def skipped(path) = out.puts("Skipped #{path} (already exists)")
