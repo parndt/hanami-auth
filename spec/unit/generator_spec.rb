@@ -177,6 +177,12 @@ RSpec.describe Hanami::Auth::Generator do
     expect(read("app/templates/layouts/app.html.erb")).to include "    <%= content_for :head %>\n  </head>"
   end
 
+  it "prints next steps for the model" do
+    generate(model: "user").print_next_steps
+
+    expect(out.string).to include "2. Add users:", %(Hanami.app["repos.user_repo"].create)
+  end
+
   it "skips tests when no test framework is given" do
     generate
 

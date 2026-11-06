@@ -3,11 +3,15 @@
 module <%= namespace %>
   module Structs
     class <%= model_class %> < <%= namespace %>::DB::Struct
-      # Keep the password hash out of logs and console output.
+      # Keep the password hash out of logs, console output, and anything serialised from a hash.
       def inspect
         "#<#{self.class.name} id=#{id.inspect} email_address=#{email_address.inspect}>"
       end
       alias_method :to_s, :inspect
+
+      def to_h
+        super.except(:password_hash)
+      end
     end
   end
 end

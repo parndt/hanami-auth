@@ -73,7 +73,7 @@ module Hanami
           Authentication generated. Next:
 
             1. Run the migrations:   bundle exec hanami db migrate
-            #{"2. Create #{model.match?(/\A[aeiou]/) ? "an" : "a"} #{model}:".ljust(25)}bundle exec hanami console
+            #{"2. Add #{models}:".ljust(25)}bundle exec hanami console
                                      > #{container}["repos.#{model}_repo"].create(email_address: "you@example.com", password: "a long password")
             3. Sign in at #{sign_in_path}
 
