@@ -7,10 +7,20 @@ module <%= namespace %>
         allow_unauthenticated_access
         rate_limit to: 10, within: 3 * 60, redirect: :<%= route(:new_password) %>
 
-        include Deps["operations.request_password_reset", "logger"]
+        include Deps["operations.request_password_reset", "logger", view: "views.passwords.new"]
+
+        params do
+          required(:email_address).filled(:string)
+        end
 
         def handle(request, response)
-          email_address = request.params[:email_address].to_s
+          unless request.params.valid?
+            response.flash.now[:alert] = "Enter your email address."
+            response.status = 422
+            return response.render(view)
+          end
+
+          email_address = request.params[:email_address]
 
           # Only a known address sends email, which takes time. Doing it after the response is sent
           # keeps the response time the same either way.

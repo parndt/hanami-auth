@@ -49,7 +49,7 @@ app["repos.user_repo"].create(email_address: "you@example.com", password: "a lon
   that support it (Puma and Falcon do), so response times don't reveal which addresses have accounts.
 - **Operations**: `operations.sign_in`, `operations.request_password_reset` and
   `operations.reset_password` hold the logic, so you can reuse them outside HTTP, for example in an
-  API slice or a console task. The generator adds `dry-operation` if your app doesn't bundle it.
+  API slice or a console task. The generator adds `dry-operation` if your app doesn't bundle it, and `dry-validation`, which the actions use to validate their params.
 - **Rate limiting.** Each IP address gets 10 sign-in attempts and 10 password reset requests every 3
   minutes, counted in a `rate_limits` table. Change the limits with `rate_limit` in each action, or
   use it on your own actions.

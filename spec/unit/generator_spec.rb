@@ -44,7 +44,7 @@ RSpec.describe Hanami::Auth::Generator do
   it "wires the app up" do
     generate
 
-    expect(read("Gemfile")).to include %(gem "argon2", "~> 2.3"\ngem "dry-operation", ">= 1.0.1"\n\ngroup :development)
+    expect(read("Gemfile")).to include %(gem "argon2", "~> 2.3"\ngem "dry-operation", ">= 1.0.1"\ngem "dry-validation", "~> 1.11"\n\ngroup :development)
     expect(read("config/settings.rb")).to include "setting :session_secret"
     expect(read("config/app.rb")).to include "config.actions.sessions = :cookie", "secret: settings.session_secret"
     expect(read("app/action.rb")).to include "include Dry::Monads[:result]\n    include Authentication\n"

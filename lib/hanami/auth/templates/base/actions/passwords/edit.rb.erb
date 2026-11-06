@@ -8,9 +8,15 @@ module <%= namespace %>
 
         include Deps["authentication.password_reset_tokens"]
 
+        params do
+          required(:id).filled(:string)
+        end
+
         def handle(request, response)
-          if password_reset_tokens.resolve(request.params[:id])
-            response[:token] = request.params[:id]
+          token = request.params[:id]
+
+          if request.params.valid? && password_reset_tokens.resolve(token)
+            response[:token] = token
             return
           end
 
