@@ -10,9 +10,17 @@ module <%= namespace %>
   #
   # The Rack session (a signed, encrypted cookie) holds a random token. The database stores only the
   # token's SHA-256 digest in the <%= sessions_table %> table, so sessions can be listed and revoked.
+  #
+  # The app and each slice with its own authentication keep their tokens side by side in the Rack
+  # session, under TOKEN_KEY, so signing in to or out of one doesn't affect the others.
   module Authentication
-    SESSION_KEY = :session_token
+    SESSION_KEY = :authentication
+    TOKEN_KEY = "<%= token_key %>"
+    RETURN_TO_KEY = :<%= token_key %>_return_to
     ENV_KEY = "<%= env_key %>"
+
+    # Where a signed-in <%= model %> goes when there's nowhere to return to.
+    HOME_PATH = "<%= home_path %>"
 
     def self.included(action_class)
       super
@@ -51,7 +59,7 @@ module <%= namespace %>
     end
 
     def resume_session(request, _response)
-      token = request.session[SESSION_KEY]
+      token = session_tokens(request)[TOKEN_KEY]
       return unless token.is_a?(String)
 
       request.env[ENV_KEY] = auth_session_repo.find_by_token_digest(digest_token(token))
@@ -60,18 +68,20 @@ module <%= namespace %>
     def require_authentication(request, response)
       return if self.class.allow_unauthenticated_access? || authenticated?(request)
 
-      request.session[:return_to] = request.fullpath if request.get?
+      request.session[RETURN_TO_KEY] = request.fullpath if request.get?
       response.flash[:alert] = "Sign in to continue."
       # 303 after a non-GET request, so the browser (and Turbo) follows up with a GET.
       response.redirect_to routes.path(:<%= route(:new_session) %>), status: request.get? ? 302 : 303
     end
 
     def start_new_session_for(request, <%= model %>)
-      return_to = request.session[:return_to]
+      tokens = session_tokens(request)
+      return_to = request.session[RETURN_TO_KEY]
 
       # Start from a fresh Rack session, so a session fixed before sign in can't be reused after it.
+      # Other apps' and slices' tokens are kept, so this doesn't sign anyone out of those.
       request.session.clear
-      request.session[:return_to] = return_to if return_to
+      request.session[RETURN_TO_KEY] = return_to if return_to
 
       token = SecureRandom.urlsafe_base64(32)
       request.env[ENV_KEY] = auth_session_repo.create(
@@ -80,7 +90,7 @@ module <%= namespace %>
         ip_address: request.ip,
         user_agent: request.get_header("HTTP_USER_AGENT")&.slice(0, 255)
       )
-      request.session[SESSION_KEY] = token
+      request.session[SESSION_KEY] = tokens.merge(TOKEN_KEY => token)
     end
 
     def terminate_session(request)
@@ -89,12 +99,18 @@ module <%= namespace %>
       end
 
       request.env.delete(ENV_KEY)
-      request.session.clear
+      request.session[SESSION_KEY] = session_tokens(request).except(TOKEN_KEY)
+      request.session.delete(RETURN_TO_KEY)
     end
 
     def after_authentication_url(request)
-      return_to = request.session.delete(:return_to)
-      return_to.is_a?(String) && return_to.start_with?("/") && !return_to.start_with?("//") ? return_to : "/"
+      return_to = request.session.delete(RETURN_TO_KEY)
+      return_to.is_a?(String) && return_to.start_with?("/") && !return_to.start_with?("//") ? return_to : HOME_PATH
+    end
+
+    def session_tokens(request)
+      tokens = request.session[SESSION_KEY]
+      tokens.is_a?(Hash) ? tokens : {}
     end
 
     def digest_token(token)

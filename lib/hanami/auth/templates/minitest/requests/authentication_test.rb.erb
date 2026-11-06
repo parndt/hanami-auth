@@ -17,7 +17,7 @@ class <%= test_class_prefix %>AuthenticationTest < RequestTest
     sign_in_as(@<%= model %>, password: PASSWORD<%= sign_in_args %>)
 
     assert_equal 303, last_response.status
-    assert_equal "/", last_response.location
+    assert_equal "<%= home_path %>", last_response.location
     assert signed_in?
   end
 

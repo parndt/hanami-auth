@@ -7,7 +7,7 @@ module <%= namespace %>
         allow_unauthenticated_access
 
         def handle(request, response)
-          response.redirect_to "/" if authenticated?(request)
+          response.redirect_to HOME_PATH if authenticated?(request)
 <%- if turbo? -%>
 
           # A Turbo Frame request lands here when a frame hits an expired session. Turbo discards this

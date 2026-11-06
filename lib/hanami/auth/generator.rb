@@ -141,6 +141,11 @@ module Hanami
 
       def env_key = "#{inflector.underscore(namespace)}.authentication.session"
 
+      # Names this app's or slice's token in the Rack session, which the app and its slices share.
+      def token_key = inflector.underscore(namespace)
+
+      def home_path = path_prefix.empty? ? "/" : path_prefix
+
       def cookie_key = "#{inflector.underscore(app_namespace)}.session"
 
       private
