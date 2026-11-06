@@ -1,0 +1,77 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Generates real Hanami apps, runs `hanami generate auth` in them, and runs the tests it generates.
+#
+#   script/e2e                 # every scenario
+#   script/e2e rspec slice     # only the named scenarios
+#
+# Needs network access for `bundle install`. Set KEEP=1 to keep the apps for inspection.
+
+require "bundler"
+require "fileutils"
+require "tmpdir"
+
+ROOT = File.expand_path("..", __dir__)
+
+# `hanami new --head` points the hanami gems at main, but not the dry-rb gems they need from main.
+EXTRA_GEMS = <<~RUBY
+  gem "dry-cli", github: "dry-rb/dry-cli", branch: "main"
+  gem "dry-system", github: "dry-rb/dry-system", branch: "main"
+
+  group :cli, :development do
+    gem "hanami-auth", path: #{ROOT.inspect}
+  end
+RUBY
+
+SCENARIOS = {
+  "rspec" => {test: "rspec", generate: [%w[generate auth]]},
+  "minitest" => {test: "minitest", generate: [%w[generate auth]]},
+  "slice" => {test: "rspec", generate: [%w[generate slice admin], %w[generate auth admin --slice=admin]]},
+  "app_and_slice" => {
+    test: "rspec",
+    generate: [%w[generate auth], %w[generate slice admin], %w[generate auth admin --slice=admin]]
+  }
+}.freeze
+
+def run(*command, chdir:, env: {})
+  puts "$ #{command.join(" ")}"
+  Bundler.with_unbundled_env do
+    system(env, *command, chdir:, exception: true)
+  end
+end
+
+def scenario(name, test:, generate:, dir:)
+  puts "\n== #{name}"
+
+  run("bundle", "exec", "hanami", "new", "bookshelf", "--head", "--skip-install", "--skip-assets", "--skip-git",
+    "--test=#{test}", chdir: dir, env: {"BUNDLE_GEMFILE" => File.join(ROOT, "Gemfile")})
+
+  app = File.join(dir, "bookshelf")
+  File.write(File.join(app, "Gemfile"), "\n#{EXTRA_GEMS}", mode: "a")
+
+  run("bundle", "install", "--quiet", chdir: app)
+  run("bundle", "exec", "hanami", "install", chdir: app)
+  generate.each { |args| run("bundle", "exec", "hanami", *args, chdir: app) }
+  run("bundle", "exec", "hanami", "db", "prepare", chdir: app, env: {"HANAMI_ENV" => "test"})
+
+  if test == "rspec"
+    run("bundle", "exec", "rspec", chdir: app)
+  else
+    run("bundle", "exec", "rake", "test", chdir: app)
+  end
+end
+
+names = ARGV.empty? ? SCENARIOS.keys : ARGV
+unknown = names - SCENARIOS.keys
+abort "Unknown scenarios: #{unknown.join(", ")}. Choose from: #{SCENARIOS.keys.join(", ")}" if unknown.any?
+
+names.each do |name|
+  dir = Dir.mktmpdir("hanami-auth-e2e-#{name}-")
+
+  begin
+    scenario(name, dir:, **SCENARIOS.fetch(name))
+  ensure
+    ENV["KEEP"] ? puts("Kept #{dir}") : FileUtils.rm_rf(dir)
+  end
+end
