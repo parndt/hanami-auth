@@ -89,6 +89,9 @@ hanami generate auth [NAME] [--slice=NAME] [--skip-install] [--skip-tests] [--fo
 | `hanami generate auth admin`              | `admins` + `admin_sessions`, `current_admin`, into `app/`        |
 | `hanami generate auth admin --slice=admin`| The same, into `slices/admin/`, with routes under the slice      |
 
+The app and each slice can hold one model's authentication. To add a second model, generate it into a
+slice.
+
 | Option           | Effect                                                    |
 |------------------|-----------------------------------------------------------|
 | `--skip-install` | Adds `argon2` to the Gemfile without running `bundle install`. |

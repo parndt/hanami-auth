@@ -156,6 +156,25 @@ RSpec.describe Hanami::Auth::Generator do
     expect(File).to exist("spec/requests/admin_authentication_spec.rb")
   end
 
+  it "refuses a second model where authentication already exists" do
+    generate
+
+    expect { generate(model: "admin") }.to raise_error(
+      Hanami::Auth::ExistingAuthenticationError,
+      /app\/ already has authentication for user.*hanami generate auth admin --slice=NAME/m
+    )
+    expect(File).not_to exist("app/repos/admin_repo.rb")
+  end
+
+  it "allows a second model in a slice" do
+    generate
+    add_slice
+
+    generate(model: "admin", slice: "admin")
+
+    expect(read("slices/admin/authentication.rb")).to include "def current_admin(request)"
+  end
+
   it "generates into a slice, with slice routes and route names" do
     add_slice
 
