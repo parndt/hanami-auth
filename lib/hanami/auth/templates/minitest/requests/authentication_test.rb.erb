@@ -48,6 +48,14 @@ class <%= test_class_prefix %>AuthenticationTest < RequestTest
     refute signed_in?
   end
 
+  test "signs out sessions older than their lifetime" do
+    sign_in_as(@<%= model %>, password: PASSWORD<%= sign_in_args %>)
+    <%= container %>["relations.<%= sessions_table %>"].dataset
+      .update(created_at: Time.now - <%= namespace %>::Repos::<%= session_repo_class %>::LIFETIME)
+
+    refute signed_in?
+  end
+
   test "resets the password with an emailed link, which works only once" do
     post "<%= passwords_path %>", email_address: "someone@example.com"
 

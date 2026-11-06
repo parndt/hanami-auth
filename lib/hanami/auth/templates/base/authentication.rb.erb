@@ -73,6 +73,8 @@ module <%= namespace %>
       request.session.clear
       request.session[:return_to] = return_to if return_to
 
+      auth_session_repo.delete_expired
+
       token = SecureRandom.urlsafe_base64(32)
       request.env[ENV_KEY] = auth_session_repo.create(
         <%= foreign_key %>: <%= model %>.id,

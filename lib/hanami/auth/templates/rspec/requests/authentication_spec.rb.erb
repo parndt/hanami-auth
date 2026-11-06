@@ -46,6 +46,14 @@ RSpec.describe "Authentication", :db, :mailers, type: :request do
     expect(signed_in?).to be false
   end
 
+  it "signs out sessions older than their lifetime" do
+    sign_in_as(<%= model %>, password:<%= sign_in_args %>)
+    <%= container %>["relations.<%= sessions_table %>"].dataset
+      .update(created_at: Time.now - <%= namespace %>::Repos::<%= session_repo_class %>::LIFETIME)
+
+    expect(signed_in?).to be false
+  end
+
   it "resets the password with an emailed link, which works only once" do
     post "<%= passwords_path %>", email_address: "someone@example.com"
 

@@ -266,7 +266,7 @@ module Hanami
             config.actions.sessions = :cookie, {
               key: "#{cookie_key}",
               secret: settings.session_secret,
-              expire_after: 60 * 60 * 24 * 30, # 30 days
+              expire_after: 60 * 60 * 24 * 30, # 30 days, as long as sessions last in the database
               same_site: "Lax",
               httponly: true,
               secure: Hanami.env?(:production)
