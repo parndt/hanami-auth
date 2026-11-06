@@ -76,6 +76,17 @@ class <%= test_class_prefix %>AuthenticationTest < RequestTest
     assert_equal 302, last_response.status
   end
 
+  test "sends the reset email after the response, where the server supports it" do
+    response_finished = []
+    post "<%= passwords_path %>", {email_address: "someone@example.com"}, "rack.response_finished" => response_finished
+
+    assert_equal 303, last_response.status
+    assert_empty deliveries
+
+    response_finished.each { _1.call(last_request.env, 303, {}, nil) }
+    assert_equal 1, deliveries.size
+  end
+
   test "doesn't send email for unknown addresses" do
     post "<%= passwords_path %>", email_address: "nobody@example.com"
 

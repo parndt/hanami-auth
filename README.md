@@ -45,7 +45,8 @@ app["repos.user_repo"].create(email_address: "you@example.com", password: "a lon
   can run `repos.session_repo`'s `delete_expired` on a schedule.
 - **Password reset** at `/passwords/new`. A mailer sends a signed link that expires after 15 minutes
   and works once, because changing the password invalidates it. A reset also signs that user out
-  everywhere. In development, the link is logged too.
+  everywhere. In development, the link is logged too. The email is sent after the response, on servers
+  that support it (Puma and Falcon do), so response times don't reveal which addresses have accounts.
 - **Operations**: `operations.sign_in`, `operations.request_password_reset` and
   `operations.reset_password` hold the logic, so you can reuse them outside HTTP, for example in an
   API slice or a console task. The generator adds `dry-operation` if your app doesn't bundle it.
