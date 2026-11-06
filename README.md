@@ -47,7 +47,7 @@ app["repos.user_repo"].create(email_address: "you@example.com", password: "a lon
   everywhere. In development, the link is logged too.
 - **Operations**: `operations.sign_in`, `operations.request_password_reset` and
   `operations.reset_password` hold the logic, so you can reuse them outside HTTP, for example in an
-  API slice or a console task. The generator adds `dry-operation` if your app doesn't bundle it.
+  API slice or a console task. The generator adds `dry-operation` if your app doesn't bundle it, and `dry-validation`, which the actions use to validate their params.
 - **Argon2id** password hashing (adds the `argon2` gem). Sign in doesn't reveal whether an account
   exists, either in its responses or its timing.
 - **Every action requires sign in** by default, through `include Authentication` in your base

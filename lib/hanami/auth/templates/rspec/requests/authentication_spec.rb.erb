@@ -66,6 +66,14 @@ RSpec.describe "Authentication", :db, :mailers, type: :request do
     expect(last_response.status).to eq 302
   end
 
+  it "asks for an email address before sending reset instructions" do
+    post "<%= passwords_path %>", email_address: ""
+
+    expect(last_response.status).to eq 422
+    expect(last_response.body).to include "Enter your email address."
+    expect(deliveries).to be_empty
+  end
+
   it "doesn't send email for unknown addresses" do
     post "<%= passwords_path %>", email_address: "nobody@example.com"
 

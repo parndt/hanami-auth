@@ -20,7 +20,8 @@ module Hanami
       # Gems the generated code needs, added to the Gemfile when missing.
       GEMS = {
         "argon2" => %(gem "argon2", "~> 2.3"),
-        "dry-operation" => %(gem "dry-operation", ">= 1.0.1")
+        "dry-operation" => %(gem "dry-operation", ">= 1.0.1"),
+        "dry-validation" => %(gem "dry-validation", "~> 1.11")
       }.freeze
 
       TEST_FRAMEWORKS = {"rspec" => "spec", "minitest" => "test"}.freeze

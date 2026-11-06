@@ -6,10 +6,20 @@ module <%= namespace %>
       class Create < <%= namespace %>::Action
         allow_unauthenticated_access
 
-        include Deps["operations.request_password_reset"]
+        include Deps["operations.request_password_reset", view: "views.passwords.new"]
+
+        params do
+          required(:email_address).filled(:string)
+        end
 
         def handle(request, response)
-          request_password_reset.call(email_address: request.params[:email_address].to_s)
+          unless request.params.valid?
+            response.flash.now[:alert] = "Enter your email address."
+            response.status = 422
+            return response.render(view)
+          end
+
+          request_password_reset.call(email_address: request.params[:email_address])
 
           # The same response either way, so this form can't be used to discover accounts.
           response.flash[:notice] = "Password reset instructions sent (if an account with that email address exists)."

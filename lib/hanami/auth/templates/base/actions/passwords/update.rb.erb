@@ -8,11 +8,20 @@ module <%= namespace %>
 
         include Deps["operations.reset_password", view: "views.passwords.edit"]
 
+        params do
+          required(:id).filled(:string)
+          required(:password).filled(:string)
+          required(:password_confirmation).filled(:string)
+        end
+
         def handle(request, response)
+          token = request.params[:id]
+          return reject(request, response, "Enter and confirm your new password.") unless request.params.valid?
+
           result = reset_password.call(
-            token: request.params[:id].to_s,
-            password: request.params[:password].to_s,
-            password_confirmation: request.params[:password_confirmation].to_s
+            token:,
+            password: request.params[:password],
+            password_confirmation: request.params[:password_confirmation]
           )
 
           case result
@@ -23,10 +32,16 @@ module <%= namespace %>
             response.flash[:alert] = "That password reset link is invalid or has expired."
             response.redirect_to routes.path(:<%= route(:new_password) %>), status: 303
           in Failure[:invalid_password, message]
-            response.flash.now[:alert] = message
-            response.status = 422
-            response.render(view, token: request.params[:id])
+            reject(request, response, message)
           end
+        end
+
+        private
+
+        def reject(request, response, message)
+          response.flash.now[:alert] = message
+          response.status = 422
+          response.render(view, token: request.params[:id])
         end
       end
     end

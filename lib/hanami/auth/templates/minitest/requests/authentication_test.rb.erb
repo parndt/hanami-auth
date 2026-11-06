@@ -68,6 +68,14 @@ class <%= test_class_prefix %>AuthenticationTest < RequestTest
     assert_equal 302, last_response.status
   end
 
+  test "asks for an email address before sending reset instructions" do
+    post "<%= passwords_path %>", email_address: ""
+
+    assert_equal 422, last_response.status
+    assert_includes last_response.body, "Enter your email address."
+    assert_empty deliveries
+  end
+
   test "doesn't send email for unknown addresses" do
     post "<%= passwords_path %>", email_address: "nobody@example.com"
 
