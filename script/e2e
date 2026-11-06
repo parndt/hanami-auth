@@ -30,7 +30,36 @@ SCENARIOS = {
   "slice" => {test: "rspec", generate: [%w[generate slice admin], %w[generate auth admin --slice=admin]]},
   "app_and_slice" => {
     test: "rspec",
-    generate: [%w[generate auth], %w[generate slice admin], %w[generate auth admin --slice=admin]]
+    generate: [%w[generate auth], %w[generate slice admin], %w[generate auth admin --slice=admin]],
+    files: {
+      "spec/requests/app_and_slice_authentication_spec.rb" => <<~RUBY
+        # frozen_string_literal: true
+
+        RSpec.describe "Authentication in the app and a slice", :db, type: :request do
+          let(:password) { "correct horse battery staple" }
+          let!(:user) { Hanami.app["repos.user_repo"].create(email_address: "user@example.com", password:) }
+          let!(:admin) { Admin::Slice["repos.admin_repo"].create(email_address: "admin@example.com", password:) }
+
+          def signed_in?(path)
+            get path
+            last_response.status == 302
+          end
+
+          it "keeps each signed in independently" do
+            sign_in_as(user, password:)
+            sign_in_as(admin, password:, path: "/admin/session")
+
+            expect(signed_in?("/session/new")).to be true
+            expect(signed_in?("/admin/session/new")).to be true
+
+            delete "/admin/session"
+
+            expect(signed_in?("/session/new")).to be true
+            expect(signed_in?("/admin/session/new")).to be false
+          end
+        end
+      RUBY
+    }
   }
 }.freeze
 
@@ -41,7 +70,7 @@ def run(*command, chdir:, env: {})
   end
 end
 
-def scenario(name, test:, generate:, dir:)
+def scenario(name, test:, generate:, dir:, files: {})
   puts "\n== #{name}"
 
   run("bundle", "exec", "hanami", "new", "bookshelf", "--head", "--skip-install", "--skip-assets", "--skip-git",
@@ -53,6 +82,7 @@ def scenario(name, test:, generate:, dir:)
   run("bundle", "install", "--quiet", chdir: app)
   run("bundle", "exec", "hanami", "install", chdir: app)
   generate.each { |args| run("bundle", "exec", "hanami", *args, chdir: app) }
+  files.each { |path, content| File.write(File.join(app, path), content) }
   run("bundle", "exec", "hanami", "db", "prepare", chdir: app, env: {"HANAMI_ENV" => "test"})
 
   if test == "rspec"

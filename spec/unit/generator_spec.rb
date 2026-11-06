@@ -161,7 +161,8 @@ RSpec.describe Hanami::Auth::Generator do
 
     generate(model: "admin", slice: "admin", test_framework: "minitest")
 
-    expect(read("slices/admin/authentication.rb")).to include "module Admin", "routes.path(:new_admin_session)"
+    expect(read("slices/admin/authentication.rb"))
+      .to include "module Admin", "routes.path(:new_admin_session)", %(TOKEN_KEY = "admin"), %(HOME_PATH = "/admin")
     expect(read("slices/admin/operations/request_password_reset.rb")).to include "routes.url(:edit_admin_password"
     expect(read("slices/admin/action.rb")).to include "include Authentication"
     expect(read("slices/admin/operation.rb")).to include "module Admin", "class Operation < Dry::Operation"
